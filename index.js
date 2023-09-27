@@ -99,7 +99,9 @@ app.get("/post_data", (req, res) => {
     //   GROUP BY post_users.post_id`;
 
     const sql = `
-        SELECT * FROM post_users;
+    SELECT post_users.*, users.user_id AS user_id, users.user_name AS user_name
+        FROM post_users
+        INNER JOIN users ON post_users.user_id = users.user_id
     `;
 
     // `WHERE ingredients_id = 1 OR ingredients_id = 2 OR ingredients_id = 3`
@@ -108,6 +110,7 @@ app.get("/post_data", (req, res) => {
     connection.query(sql, (error, results) => {
         if (error) {
             console.log(req.file);
+
             res.json({ status: "error", message: "fail" });
             // res.status(500).json({ error: 'Internal Server Error' });
         } else {
@@ -120,7 +123,7 @@ app.get("/post_data", (req, res) => {
                     [ingredients.id]
                 );
                 connection.query(sql2, (error2, results2) => {
-                    if (error) {
+                    if (error2) {
                         console.log(req.file);
                         res.json({ status: "error", message: "fail" });
                         // res.status(500).json({ error: 'Internal Server Error' });
@@ -134,7 +137,7 @@ app.get("/post_data", (req, res) => {
                             // console.log(item);
                             results[i].ingredients_id.push(item);
                             if (i === results.length - 1 && index === result2Size - 1) {
-                                res.send(results);
+                                res.json(results);
                                 res.end();
                             }
                         });
@@ -277,30 +280,41 @@ app.patch("/uploadPostImage", Postupload.single("post_image"), (req, res) => {
 //-------------------------------PostDATA----------------------------------------------------//
 
 app.post("/post_data", Postupload.single("post_image"), (req, res) => {
-    console.log(req.body);
-    // const { post_name, post_description, post_types, user_id } = req.body;
-    // const ingredients_id = JSON.parse(req.body.ingredients_id);
-    // const post_image = req.file.filename; // รับชื่อไฟล์อัปโหลด
+    // console.log(req.body);
+    const { post_name, post_description, post_types, user_id } = req.body;
+    const ingredients_unit = JSON.parse(req.body.ingredients_unit);
+    const ingredients_id = req.body.ingredients_id.split(",");
+    const post_image = req.file.filename; // รับชื่อไฟล์อัปโหลด
 
-    // const sql1 = "INSERT INTO post_users (post_name, post_description, post_types, ingredients_id, user_id, post_image) VALUES (?, ?, ?, ?, ?, ?)";
+    res.status(500);
+    res.end();
+
+    const sql1 = "INSERT INTO post_users (post_name, post_description, post_types, ingredients_id, user_id, post_image) VALUES (?, ?, ?, ?, ?, ?)";
     // // const sql2 = "INSERT INTO ingredients_list_in_use (post_id, ingredients_id) VALUES (?, ?)";
 
-    // const unitSample = [200, 300, 450];
+    const ingredientsData = { id: [], unit: [] };
 
-    // const ingredientsData = {};
-    // ingredients_id.forEach((item, index) => {
-    //     ingredientsData[item] = unitSample[index];
-    // });
+    ingredients_id.forEach((item, index) => {
+        ingredientsData.id.push(parseInt(item));
+        ingredientsData.unit.push(ingredients_unit[index]);
+    });
 
     // // connection.beginTransaction(function (err) {
     // //     if (err) throw err;
 
-    // connection.query(sql1, [post_name, post_description, post_types, JSON.stringify(ingredientsData), user_id, post_image], function (err, result1) {
-    //     if (err) {
-    //         connection.rollback(function () {
-    //             throw err;
-    //         });
-    //     }
+    try {
+        connection.query(
+            sql1,
+            [post_name, post_description, post_types, JSON.stringify(ingredientsData), user_id, post_image],
+            function (err, result1) {
+                if (err) {
+                    connection.rollback(function () {
+                        throw err;
+                    });
+                }
+            }
+        );
+    } catch (error) {}
 
     //     res.end("done");
 
