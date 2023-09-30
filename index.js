@@ -160,6 +160,20 @@ app.get("/ingredients_data", (req, res) => {
     });
 });
 
+app.get("/comments", (req, res) => {
+    const sql = `SELECT comments.*, users.user_id AS user_id, users.user_name AS user_name, users.user_image AS user_image
+        FROM comments
+        INNER JOIN users ON comments.user_id = users.user_id;`;
+
+    connection.query(sql, (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            res.json(results);
+        }
+    });
+});
+
 //-------------------------------image----------------------------------------------------//
 // const storage = multer.diskStorage({
 //   destination: (req, file, cb) => {
@@ -287,7 +301,7 @@ app.post("/post_data", Postupload.single("post_image"), (req, res) => {
     const post_image = req.file.filename; // รับชื่อไฟล์อัปโหลด
 
     res.status(500);
-    res.end();
+    //res.end();
 
     const sql1 = "INSERT INTO post_users (post_name, post_description, post_types, ingredients_id, user_id, post_image) VALUES (?, ?, ?, ?, ?, ?)";
     // // const sql2 = "INSERT INTO ingredients_list_in_use (post_id, ingredients_id) VALUES (?, ?)";
@@ -312,6 +326,8 @@ app.post("/post_data", Postupload.single("post_image"), (req, res) => {
                         throw err;
                     });
                 }
+                res.status(200);
+                //res.json({ status: "ok" });
             }
         );
     } catch (error) {}
