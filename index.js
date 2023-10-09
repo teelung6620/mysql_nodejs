@@ -271,6 +271,18 @@ app.get("/ingredients_data", (req, res) => {
     });
 });
 
+app.get("/bookmarks", (req, res) => {
+    const sql = "SELECT * FROM bookmarks";
+
+    connection.query(sql, (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            res.json(results);
+        }
+    });
+});
+
 app.get("/comments", (req, res) => {
     const sql = `SELECT comments.*, users.user_id AS user_id, users.user_name AS user_name, users.user_image AS user_image
         FROM comments
