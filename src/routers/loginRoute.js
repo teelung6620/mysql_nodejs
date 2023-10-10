@@ -21,7 +21,9 @@ router.post("/", function (req, res, next) {
         }
         bcrypt.compare(req.body.user_password, users[0].user_password, function (err, isLogin) {
             if (isLogin) {
-                var token = jwt.sign({ user_email: users[0].user_email, user_id: users[0].user_id }, secret, { expiresIn: "24h" });
+                var token = jwt.sign({ user_email: users[0].user_email, user_id: users[0].user_id, user_name: users[0].user_name }, secret, {
+                    expiresIn: "24h",
+                });
                 res.json({ status: "ok", message: "login success", token });
             } else {
                 res.json({ status: "error", message: "login fail" });
@@ -33,7 +35,7 @@ router.post("/", function (req, res, next) {
 router.get("/", (req, res) => {
     const sql = "SELECT * FROM users";
 
-    connection.query(sql, (error, results) => {
+    connection.query(sql, [req.body.user_id], (error, results) => {
         if (error) {
             res.status(500).json({ error: "Internal Server Error" });
         } else {

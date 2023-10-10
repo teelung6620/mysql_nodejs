@@ -283,6 +283,49 @@ app.get("/bookmarks", (req, res) => {
     });
 });
 
+app.post("/bookmarks", (req, res) => {
+    const { user_id, post_id } = req.body;
+    const sqlSelect = "SELECT * FROM bookmarks WHERE user_id = ? AND post_id = ?";
+    const sqlInsert = "INSERT INTO bookmarks (user_id, post_id) VALUES (?, ?)";
+
+    // ทำการค้นหาบันทึกที่มี user_id และ post_id เหมือนกัน
+    connection.query(sqlSelect, [user_id, post_id], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            if (results.length > 0) {
+                // หากมีบันทึกที่ซ้ำกันแล้ว ส่งข้อความผิดพลาด
+                res.status(400).json({ error: "Bookmark already exists" });
+            } else {
+                // หากไม่มีบันทึกที่ซ้ำกัน ทำการเพิ่มบันทึกใหม่
+                connection.query(sqlInsert, [user_id, post_id], (error, insertResults) => {
+                    if (error) {
+                        res.status(500).json({ error: "Internal Server Error" });
+                    } else {
+                        res.status(200).json({ message: "Bookmark added successfully" });
+                    }
+                });
+            }
+        }
+    });
+});
+
+app.delete("/DELbookmarks/:bookmark_id", (req, res) => {
+    const bookmarkId = req.params.bookmark_id;
+
+    const sql = "DELETE FROM bookmarks WHERE bookmark_id=? ";
+
+    connection.query(sql, [bookmarkId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
+        }
+    });
+});
+
 app.get("/comments", (req, res) => {
     const sql = `SELECT comments.*, users.user_id AS user_id, users.user_name AS user_name, users.user_image AS user_image
         FROM comments
