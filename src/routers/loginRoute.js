@@ -21,10 +21,39 @@ router.post("/", function (req, res, next) {
         }
         bcrypt.compare(req.body.user_password, users[0].user_password, function (err, isLogin) {
             if (isLogin) {
-                var token = jwt.sign({ user_email: users[0].user_email, user_id: users[0].user_id, user_name: users[0].user_name }, secret, {
-                    expiresIn: "24h",
-                });
-                res.json({ status: "ok", message: "login success", token });
+                // ตรวจสอบสถานะของผู้ใช้ (user หรือ admin)
+                if (users[0].user_type === "user") {
+                    var token = jwt.sign(
+                        {
+                            user_email: users[0].user_email,
+                            user_id: users[0].user_id,
+                            user_name: users[0].user_name,
+                            user_image: users[0].user_image,
+                            user_type: users[0].user_type,
+                        },
+                        secret,
+                        {
+                            expiresIn: "24h",
+                        }
+                    );
+                    res.json({ status: "ok", message: "user login success", token });
+                } else if (users[0].user_type === "admin") {
+                    // สามารถเปลี่ยน message และการตอบกลับอื่น ๆ สำหรับ admin
+                    var token = jwt.sign(
+                        {
+                            user_email: users[0].user_email,
+                            user_id: users[0].user_id,
+                            user_name: users[0].user_name,
+                            user_image: users[0].user_image,
+                            user_type: users[0].user_type,
+                        },
+                        secret,
+                        {
+                            expiresIn: "24h",
+                        }
+                    );
+                    res.json({ status: "ok", message: "admin login success", token });
+                }
             } else {
                 res.json({ status: "error", message: "login fail" });
             }

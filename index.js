@@ -113,9 +113,10 @@ app.post("/register", Postupload.single("user_image"), (req, res, next) => {
             return res.json({ error: "Your email is already in use" });
         }
         bcrypt.hash(req.body.user_password, saltRounds, function (err, hash) {
+            // แนบคอลัมน์ user_type ด้วยค่าเริ่มต้น "user"
             connection.execute(
-                "INSERT INTO users ( user_email, user_name, user_password, user_image) VALUES (? , ? , ?, ?)",
-                [req.body.user_email, req.body.user_name, hash, user_image],
+                "INSERT INTO users (user_email, user_name, user_password, user_image, user_type) VALUES (?, ?, ?, ?, ?)",
+                [req.body.user_email, req.body.user_name, hash, user_image, "user"],
                 function (err, results, fields) {
                     if (err) {
                         res.json({ status: "error", message: err });
@@ -268,6 +269,37 @@ app.get("/ingredients_data", (req, res) => {
         } else {
             res.json(results);
         }
+    });
+});
+
+app.post("/ingredients_data", (req, res) => {
+    const { ingredients_name, ingredients_units, ingredients_unitsName, ingredients_cal } = req.body;
+
+    // 1. ตรวจสอบว่าชื่อซ้ำหรือไม่โดยใช้ SQL query
+    const checkDuplicateQuery = "SELECT * FROM ingredients_list WHERE ingredients_name = ?";
+    connection.query(checkDuplicateQuery, [ingredients_name], (err, results) => {
+        if (err) {
+            console.error("Error checking for duplicate:", err);
+            return res.status(500).json({ error: "Failed to check for duplicate ingredient" });
+        }
+
+        if (results.length > 0) {
+            // 2. ถ้ามีข้อมูลในผลลัพธ์ แสดงว่าชื่อซ้ำ
+            return res.status(400).json({ error: "ชื่อส่วนผสมนี้มีอยู่แล้ว" });
+        }
+
+        // 3. ถ้าชื่อไม่ซ้ำ ก็สร้างคำสั่ง SQL INSERT และเพิ่มข้อมูล
+        const insertQuery =
+            "INSERT INTO ingredients_list (ingredients_name, ingredients_units, ingredients_unitsName, ingredients_cal) VALUES (?, ?, ?, ?)";
+
+        connection.query(insertQuery, [ingredients_name, ingredients_units, ingredients_unitsName, ingredients_cal], (err, result) => {
+            if (err) {
+                console.error("Error adding ingredient:", err);
+                return res.status(500).json({ error: "Failed to add ingredient" });
+            }
+            console.log("Ingredient added:", result);
+            return res.json({ status: "ok" });
+        });
     });
 });
 
