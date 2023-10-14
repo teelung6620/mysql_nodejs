@@ -200,12 +200,18 @@ app.post("/authen", function (req, res, next) {
 //         }
 //     });
 // });
-
 app.get("/post_data", (req, res) => {
     const sql = `
-    SELECT post_users.*, users.user_id AS user_id, users.user_name AS user_name
+        SELECT 
+            post_users.*,
+            users.user_id AS user_id,
+            users.user_name AS user_name,
+            IFNULL(ROUND(AVG(scores.score_num), 1), 0) AS average_score,
+            COUNT(scores.score_num) AS num_of_scores
         FROM post_users
         INNER JOIN users ON post_users.user_id = users.user_id
+        LEFT JOIN scores ON post_users.post_id = scores.post_id
+        GROUP BY post_users.post_id
     `;
 
     connection.query(sql, (error, results) => {
@@ -245,6 +251,8 @@ app.get("/post_data", (req, res) => {
 
                             if (index === result2Size - 1) {
                                 results[i].totalCal = totalCal; // เพิ่มผลรวม "ingredients_cal" ในข้อมูลของแต่ละ post_id
+                                results[i].average_score = result.average_score; // เพิ่มค่าเฉลี่ย
+                                results[i].num_of_scores = result.num_of_scores; // เพิ่มจำนวน score_num
                                 postDetails.push(results[i]); // เพิ่มข้อมูล postDetails ในอาร์เรย์
 
                                 if (i === results.length - 1) {
@@ -358,6 +366,66 @@ app.delete("/DELbookmarks/:bookmark_id", (req, res) => {
     });
 });
 
+app.get("/scores", (req, res) => {
+    const sql = "SELECT * FROM scores";
+
+    connection.query(sql, (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            res.json(results);
+        }
+    });
+});
+
+app.post("/scores", (req, res) => {
+    const { user_id, post_id, score_num } = req.body;
+    const sqlSelect = "SELECT * FROM scores WHERE user_id = ? AND post_id = ?";
+    const sqlInsert = "INSERT INTO scores (user_id, post_id, score_num) VALUES (?, ?, ?)";
+
+    // ทำการค้นหาบันทึกที่มี user_id และ post_id เหมือนกัน
+    connection.query(sqlSelect, [user_id, post_id], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            if (results.length > 0) {
+                // หากมีบันทึกที่ซ้ำกันแล้ว ส่งข้อความผิดพลาด
+                res.status(400).json({ error: "scores already exists" });
+            } else {
+                // ตรวจสอบว่าคะแนนที่ส่งมาอยู่ในช่วง 1-5
+                if (score_num >= 1 && score_num <= 5) {
+                    // หากไม่มีบันทึกที่ซ้ำกัน และคะแนนถูกต้อง ทำการเพิ่มบันทึกใหม่
+                    connection.query(sqlInsert, [user_id, post_id, score_num], (error, insertResults) => {
+                        if (error) {
+                            res.status(500).json({ error: "Internal Server Error" });
+                        } else {
+                            res.status(200).json({ message: "scores added successfully" });
+                        }
+                    });
+                } else {
+                    res.status(400).json({ error: "Invalid score number. It should be between 1 and 5." });
+                }
+            }
+        }
+    });
+});
+
+app.delete("/DELscores/:scores_id", (req, res) => {
+    const scoresId = req.params.bookmark_id;
+
+    const sql = "DELETE FROM scores WHERE scores_id=? ";
+
+    connection.query(sql, [scoresId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
+        }
+    });
+});
+
 app.get("/comments", (req, res) => {
     const sql = `SELECT comments.*, users.user_id AS user_id, users.user_name AS user_name, users.user_image AS user_image
         FROM comments
@@ -389,6 +457,7 @@ app.post("/comments", (req, res) => {
     });
 });
 app.use(express.static("comments"));
+
 //-------------------------------image----------------------------------------------------//
 // const storage = multer.diskStorage({
 //   destination: (req, file, cb) => {
@@ -504,32 +573,8 @@ app.post("/post_data", Postupload.single("post_image"), (req, res) => {
             }
         );
     } catch (error) {}
-
-    //     res.end("done");
-
-    //     //const postID = result1.insertId; // ใช้ result1 ไม่ใช่ result
-
-    //     // connection.query(sql2, [postID, ingredients_id], function (err, result2) {
-    //     //     if (err) {
-    //     //         connection.rollback(function () {
-    //     //             throw err;
-    //     //         });
-    //     //     }
-
-    //     //     connection.commit(function (err) {
-    //     //         if (err) {
-    //     //             connection.rollback(function () {
-    //     //                 throw err;
-    //     //             });
-    //     //         }
-
-    //     //         console.log("เพิ่มข้อมูลสำเร็จแล้ว!");
-    //     //         console.log("insertId:", postID);
-    //     //         res.json({ insertId: postID });
-    //     //     });
-    //     // });
-    // });
 });
+
 // });
 app.use(express.static("post_data"));
 app.use("/uploadPostImage", express.static("./resources/static/assets/upload_post/"));
@@ -541,8 +586,15 @@ app.delete("/DELpost_data/:post_id", (req, res) => {
         if (error) {
             res.status(500).json({ error: "Internal Server Error" });
         } else {
-            res.json(results);
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
         }
+        // if (error) {
+        //     res.status(500).json({ error: "Internal Server Error" });
+        // } else {
+        //     res.json(results);
+        // }
     });
 });
 
