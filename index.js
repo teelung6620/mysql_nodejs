@@ -410,6 +410,38 @@ app.post("/scores", (req, res) => {
     });
 });
 
+app.patch("/scores", (req, res) => {
+    const { user_id, post_id, score_num } = req.body;
+    const sqlSelect = "SELECT * FROM scores WHERE user_id = ? AND post_id = ?";
+    const sqlUpdate = "UPDATE scores SET score_num = ? WHERE user_id = ? AND post_id = ?";
+
+    // ทำการค้นหาบันทึกที่มี user_id และ post_id เหมือนกัน
+    connection.query(sqlSelect, [user_id, post_id], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            if (results.length === 0) {
+                // หากไม่พบบันทึกที่มี user_id และ post_id เหมือนกัน ส่งข้อความผิดพลาด
+                res.status(404).json({ error: "scores not found" });
+            } else {
+                // ตรวจสอบว่าคะแนนที่ส่งมาอยู่ในช่วง 1-5
+                if (score_num >= 1 && score_num <= 5) {
+                    // หากพบบันทึกที่ตรง และคะแนนถูกต้อง ทำการอัปเดตคะแนน
+                    connection.query(sqlUpdate, [score_num, user_id, post_id], (error, updateResults) => {
+                        if (error) {
+                            res.status(500).json({ error: "Internal Server Error" });
+                        } else {
+                            res.status(200).json({ message: "scores updated successfully" });
+                        }
+                    });
+                } else {
+                    res.status(400).json({ error: "Invalid score number. It should be between 1 and 5." });
+                }
+            }
+        }
+    });
+});
+
 app.delete("/DELscores/:scores_id", (req, res) => {
     const scoresId = req.params.bookmark_id;
 
