@@ -607,6 +607,31 @@ app.post("/post_data", Postupload.single("post_image"), (req, res) => {
     } catch (error) {}
 });
 
+app.patch("/update_post_data/:post_id", Postupload.single("post_image"), (req, res) => {
+    const post_id = req.params.post_id;
+    const { post_name, post_description, post_types, user_id } = req.body;
+    const ingredients_unit = JSON.parse(req.body.ingredients_unit);
+    const ingredients_id = req.body.ingredients_id.split(",");
+    const post_image = req.file.filename; // รับชื่อไฟล์อัปโหลด
+
+    const sql1 = "UPDATE post_users SET post_name = ?, post_description = ?, post_types = ?, ingredients_id = ?, post_image = ? WHERE post_id = ?";
+
+    const ingredientsData = { id: [], unit: [] };
+
+    ingredients_id.forEach((item, index) => {
+        ingredientsData.id.push(parseInt(item));
+        ingredientsData.unit.push(ingredients_unit[index]);
+    });
+
+    connection.query(sql1, [post_name, post_description, post_types, JSON.stringify(ingredientsData), post_image, post_id], function (err, result1) {
+        if (err) {
+            res.status(500).json({ status: "error", message: "Database error" });
+        } else {
+            res.status(200).json({ status: "ok" });
+        }
+    });
+});
+
 // });
 app.use(express.static("post_data"));
 app.use("/uploadPostImage", express.static("./resources/static/assets/upload_post/"));
@@ -627,6 +652,31 @@ app.delete("/DELpost_data/:post_id", (req, res) => {
         // } else {
         //     res.json(results);
         // }
+    });
+});
+
+app.put("/BANuser/:user_id", (req, res) => {
+    const userId = req.params.user_id;
+
+    // ตรวจสอบว่าผู้ใช้ถูกแบนหรือไม่
+    const sqlCheckBanned = "SELECT banned FROM users WHERE user_id=?";
+    connection.query(sqlCheckBanned, [userId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else if (results.length === 0) {
+            res.status(404).json({ message: "ผู้ใช้ไม่พบ" });
+        } else if (results[0].banned) {
+            res.status(403).json({ message: "ผู้ใช้ถูกแบนแล้ว" });
+        } else {
+            const sql = "UPDATE users SET banned = 1 WHERE user_id=?";
+            connection.query(sql, [userId], (error, results) => {
+                if (error) {
+                    res.status(500).json({ error: "Internal Server Error" });
+                } else {
+                    res.status(200).json({ message: "แบนผู้ใช้สำเร็จ" });
+                }
+            });
+        }
     });
 });
 

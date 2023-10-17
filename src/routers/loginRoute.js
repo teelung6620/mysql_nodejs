@@ -30,13 +30,14 @@ router.post("/", function (req, res, next) {
                             user_name: users[0].user_name,
                             user_image: users[0].user_image,
                             user_type: users[0].user_type,
+                            banned: users[0].banned,
                         },
                         secret,
                         {
                             expiresIn: "24h",
                         }
                     );
-                    res.json({ status: "ok", message: "user login success", token });
+                    res.json({ status: "ok_user", message: "user login success", token });
                 } else if (users[0].user_type === "admin") {
                     // สามารถเปลี่ยน message และการตอบกลับอื่น ๆ สำหรับ admin
                     var token = jwt.sign(
@@ -46,13 +47,14 @@ router.post("/", function (req, res, next) {
                             user_name: users[0].user_name,
                             user_image: users[0].user_image,
                             user_type: users[0].user_type,
+                            banned: users[0].banned,
                         },
                         secret,
                         {
-                            expiresIn: "24h",
+                            expiresIn: "48h",
                         }
                     );
-                    res.json({ status: "ok", message: "admin login success", token });
+                    res.json({ status: "ok_admin", message: "admin login success", token });
                 }
             } else {
                 res.json({ status: "error", message: "login fail" });
