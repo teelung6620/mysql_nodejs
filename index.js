@@ -366,6 +366,61 @@ app.delete("/DELbookmarks/:bookmark_id", (req, res) => {
     });
 });
 
+app.get("/reports", (req, res) => {
+    const sql = "SELECT * FROM reports";
+
+    connection.query(sql, (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            res.json(results);
+        }
+    });
+});
+
+app.post("/reports", (req, res) => {
+    const { user_id, post_id } = req.body;
+    const sqlSelect = "SELECT * FROM reports WHERE user_id = ? AND post_id = ?";
+    const sqlInsert = "INSERT INTO reports (user_id, post_id) VALUES (?, ?)";
+
+    // ทำการค้นหาบันทึกที่มี user_id และ post_id เหมือนกัน
+    connection.query(sqlSelect, [user_id, post_id], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            if (results.length > 0) {
+                // หากมีบันทึกที่ซ้ำกันแล้ว ส่งข้อความผิดพลาด
+                res.status(400).json({ error: "reports already exists" });
+            } else {
+                // หากไม่มีบันทึกที่ซ้ำกัน ทำการเพิ่มบันทึกใหม่
+                connection.query(sqlInsert, [user_id, post_id], (error, insertResults) => {
+                    if (error) {
+                        res.status(500).json({ error: "Internal Server Error" });
+                    } else {
+                        res.status(200).json({ message: "reports added successfully" });
+                    }
+                });
+            }
+        }
+    });
+});
+
+app.delete("/DELreports/:report_id", (req, res) => {
+    const reportId = req.params.report_id;
+
+    const sql = "DELETE FROM reports WHERE report_id=? ";
+
+    connection.query(sql, [reportId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
+        }
+    });
+});
+
 app.get("/scores", (req, res) => {
     const sql = "SELECT * FROM scores";
 
