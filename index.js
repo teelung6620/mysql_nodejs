@@ -367,7 +367,7 @@ app.delete("/DELbookmarks/:bookmark_id", (req, res) => {
 });
 
 app.get("/reports", (req, res) => {
-    const sql = "SELECT * FROM reports";
+    const sql = "SELECT reports.*, users.user_name FROM reports INNER JOIN users ON reports.user_id = users.user_id";
 
     connection.query(sql, (error, results) => {
         if (error) {
@@ -729,6 +729,31 @@ app.put("/BANuser/:user_id", (req, res) => {
                     res.status(500).json({ error: "Internal Server Error" });
                 } else {
                     res.status(200).json({ message: "แบนผู้ใช้สำเร็จ" });
+                }
+            });
+        }
+    });
+});
+
+app.put("/UNBANuser/:user_id", (req, res) => {
+    const userId = req.params.user_id;
+
+    // ตรวจสอบว่าผู้ใช้ถูกแบนหรือไม่
+    const sqlCheckBanned = "SELECT banned FROM users WHERE user_id=?";
+    connection.query(sqlCheckBanned, [userId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else if (results.length === 0) {
+            res.status(404).json({ message: "ผู้ใช้ไม่พบ" });
+        } else if (!results[0].banned) {
+            res.status(403).json({ message: "ผู้ใช้ยังไม่ถูกแบน" });
+        } else {
+            const sql = "UPDATE users SET banned = 0 WHERE user_id=?";
+            connection.query(sql, [userId], (error, results) => {
+                if (error) {
+                    res.status(500).json({ error: "Internal Server Error" });
+                } else {
+                    res.status(200).json({ message: "ปลดแบนผู้ใช้สำเร็จ" });
                 }
             });
         }
