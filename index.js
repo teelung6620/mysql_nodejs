@@ -662,7 +662,7 @@ app.post("/post_data", Postupload.single("post_image"), (req, res) => {
     } catch (error) {}
 });
 
-app.patch("/update_post_data/:post_id", Postupload.single("post_image"), (req, res) => {
+app.patch("/post_data/:post_id", Postupload.single("post_image"), (req, res) => {
     const post_id = req.params.post_id;
     const { post_name, post_description, post_types, user_id } = req.body;
     const ingredients_unit = JSON.parse(req.body.ingredients_unit);

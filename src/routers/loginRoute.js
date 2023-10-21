@@ -75,4 +75,43 @@ router.get("/", (req, res) => {
     });
 });
 
+router.patch("/", function (req, res, next) {
+    // Retrieve the user's current data from the database
+    connection.execute("SELECT * FROM users WHERE user_id=?", [req.body.user_id], function (err, users, fields) {
+        if (err) {
+            res.json({ status: "error", message: err });
+            return;
+        }
+        if (users.length === 0) {
+            res.json({ status: "error", message: "No users found" });
+            return;
+        }
+
+        // Create an object to store updated user data
+        const updatedUser = {
+            user_name: req.body.user_name || users[0].user_name,
+            user_email: req.body.user_email || users[0].user_email,
+            user_image: req.body.user_image || users[0].user_image,
+        };
+
+        // Update the user's data in the database
+        updateUserDataInDatabase(updatedUser, req.body.user_id, res);
+    });
+});
+
+function updateUserDataInDatabase(updatedUser, userId, res) {
+    // Update the user's data in the database using an SQL UPDATE statement
+    connection.execute(
+        "UPDATE users SET user_name=?, user_email=?, user_image=? WHERE user_id=?",
+        [updatedUser.user_name, updatedUser.user_email, updatedUser.user_image, userId],
+        function (err, result) {
+            if (err) {
+                res.json({ status: "error", message: err });
+            } else {
+                res.json({ status: "success", message: "User data updated successfully" });
+            }
+        }
+    );
+}
+
 module.exports = router;
