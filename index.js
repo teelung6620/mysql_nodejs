@@ -143,6 +143,73 @@ app.post("/authen", function (req, res, next) {
     }
 });
 
+app.patch("/login", Postupload.single("user_image"), function (req, res, next) {
+    // Retrieve the user's current data from the database
+    connection.execute("SELECT * FROM users WHERE user_id=?", [req.body.user_id], function (err, users, fields) {
+        console.log(req.file);
+        console.log(users[0].user_image);
+        if (err) {
+            res.json({ status: "error", message: err });
+            return;
+        }
+        if (users.length === 0) {
+            res.json({ status: "error", message: "No users found" });
+            return;
+        }
+
+        // Create an object to store updated user data
+        const updatedUser = {
+            user_name: req.body.user_name || users[0].user_name,
+            user_email: req.body.user_email || users[0].user_email,
+            user_image: req.file ? req.file.filename : users[0].user_image, // ใช้ path ของไฟล์ที่อัปโหลด
+            user_password: req.body.user_password || users[0].user_password,
+        };
+
+        // Update the user's data in the database
+        updateUserDataInDatabase(updatedUser, req.body.user_id, res);
+    });
+});
+
+function updateUserDataInDatabase(updatedUser, userId, res) {
+    // Update the user's data in the database using an SQL UPDATE statement
+    connection.execute(
+        "UPDATE users SET user_name=?, user_email=?, user_image=?, user_password=? WHERE user_id=?",
+        [updatedUser.user_name, updatedUser.user_email, updatedUser.user_image, updatedUser.user_password, userId],
+
+        function (err, result) {
+            if (err) {
+                res.json({ status: "error", message: err });
+            } else {
+                res.json({ status: "success", message: "User data updated successfully" });
+            }
+        }
+    );
+}
+
+app.patch("/userImage", Postupload.single("user_image"), (req, res) => {
+    console.log(req.file);
+    if (!req.file) {
+        return res.status(400).send("no image");
+    }
+
+    // บันทึกรูปภาพลงในฐานข้อมูล MySQL
+    // const { originalname, path } = req.file;
+    // const user_imagename = originalname;
+    // const user_image = path;
+    console.log(req.file);
+    const user_image = req.file.filename;
+
+    const sql = "UPDATE users SET user_image = ? WHERE user_id = ?";
+    connection.query(sql, [user_image, req.body.user_id], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("เกิดข้อผิดพลาดในการบันทึกรูปภาพ");
+        }
+
+        res.status(200).send("อัปโหลดรูปภาพและบันทึกในฐานข้อมูลสำเร็จ");
+    });
+});
+
 // app.get("/post_data", (req, res) => {
 //     //     const sql = `SELECT *
 //     //   FROM post_users
