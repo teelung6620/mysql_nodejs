@@ -94,7 +94,7 @@ function checkFileType(file, cb) {
 
 //----------------------------------------REGISTER-------------------------------------------------
 app.post("/register", Postupload.single("user_image"), (req, res, next) => {
-    // ตรวจสอบว่ามีไฟล์ถูกอัปโหลดหรือไม่
+    // ตรวจสอบไฟล์
     if (!req.file) {
         console.error("No file uploaded");
         return res.json({ error: "No file uploaded" });
@@ -143,7 +143,7 @@ app.post("/authen", function (req, res, next) {
     }
 });
 
-app.patch("/login", Postupload.single("user_image"), function (req, res, next) {
+app.patch("/UpdateUser", Postupload.single("user_image"), function (req, res, next) {
     // Retrieve the user's current data from the database
     connection.execute("SELECT * FROM users WHERE user_id=?", [req.body.user_id], function (err, users, fields) {
         console.log(req.file);
