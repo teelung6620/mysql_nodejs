@@ -93,8 +93,68 @@ function checkFileType(file, cb) {
 // });
 
 //----------------------------------------REGISTER-------------------------------------------------
+
+// สร้างรหัสยืนยัน (verification code) ที่เป็นเลขสุ่ม
+function generateVerificationCode() {
+    return Math.floor(1000 + Math.random() * 9000);
+}
+
+// สร้างรหัสยืนยันและบันทึกลงในฐานข้อมูล
+function createVerificationCode(userId, callback) {
+    const verificationCode = generateVerificationCode();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30); // ตั้งเวลาหมดอายุใน 30 นาที
+    const sql = "INSERT INTO email_verification (user_id, code, created_at, expired_at, is_verified) VALUES (?, ?, NOW(), ?, false)";
+    connection.query(sql, [userId, verificationCode, expiresAt], (error, results) => {
+        if (error) {
+            return callback(error, null);
+        }
+        callback(null, verificationCode);
+    });
+}
+
+// ยืนยันอีเมล
+// ยืนยันอีเมล
+
+// นิยามฟังก์ชันส่งอีเมลยืนยัน
+function sendVerificationEmail(email, verificationCode) {
+    // ในส่วนนี้คุณควรใช้ไลบรารีหรือโมดูลที่เหมาะสมในการส่งอีเมล
+    // เพื่อสร้างอีเมลยืนยันและส่งไปยังอีเมลของผู้ใช้
+    // ตัวอย่างโค้ดนี้ใช้ nodemailer สำหรับการส่งอีเมล (ควรติดตั้ง nodemailer ก่อนใช้)
+
+    const nodemailer = require("nodemailer");
+
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: "teelung6620@gmail.com",
+            pass: "wpdx yrrw gbjq ryvb",
+        },
+    });
+
+    const mailOptions = {
+        from: "teelung6620@gmail.com",
+        to: email,
+        subject: "Email Verification",
+        text: `Your OTP : ${verificationCode}`,
+        html: `<p style="color: blue;">Your OTP : ${verificationCode}</p>`,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+            console.log("Error sending verification email: " + error);
+        } else {
+            console.log("Verification email sent: " + info.response);
+        }
+    });
+}
+
+// ในส่วนของการสร้างรหัสยืนยันเมื่อผู้ใช้ลงทะเบียน
 app.post("/register", Postupload.single("user_image"), (req, res, next) => {
-    // ตรวจสอบไฟล์
+    // ... (code อื่น ๆ)
+    // ในส่วนของการสร้างรหัสยืนยันเมื่อผู้ใช้ลงทะเบียน
+
+    // ... (code อื่น ๆ)
     if (!req.file) {
         console.error("No file uploaded");
         return res.json({ error: "No file uploaded" });
@@ -122,12 +182,128 @@ app.post("/register", Postupload.single("user_image"), (req, res, next) => {
                         res.json({ status: "error", message: err });
                         return;
                     }
-                    res.json({ status: "ok" });
+
+                    // หาข้อมูลผู้ใช้ที่เพิ่มลงในฐานข้อมูล
+                    connection.query("SELECT user_id FROM users WHERE user_email = ?", [req.body.user_email], (error, userResults) => {
+                        if (error) {
+                            res.json({ status: "error", message: error });
+                            return;
+                        }
+
+                        if (userResults.length === 0) {
+                            res.json({ status: "error", message: "User not found" });
+                            return;
+                        }
+
+                        // ดึงรหัสผู้ใช้
+                        const userId = userResults[0].user_id;
+
+                        // เรียกใช้ฟังก์ชันสร้างรหัสยืนยัน
+                        createVerificationCode(userId, (verificationError, verificationCode) => {
+                            if (verificationError) {
+                                res.json({ status: "error", message: verificationError });
+                                return;
+                            }
+
+                            // ส่งอีเมลยืนยันไปยังอีเมลของผู้ใช้
+
+                            sendVerificationEmail(req.body.user_email, verificationCode);
+
+                            // ดำเนินการเพิ่มรายการลงทะเบียนเสร็จสมบูรณ์
+                            res.json({ status: "ok", userId: userId });
+                            console.log(userId);
+                        });
+                    });
                 }
             );
         });
     });
 });
+
+app.delete("/DELregister/:user_id", (req, res) => {
+    const userId = req.params.user_id;
+
+    const sql = "DELETE FROM users WHERE user_id=? ";
+
+    connection.query(sql, [userId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
+        }
+    });
+});
+
+app.patch("/verify", (req, res) => {
+    if (!req.body.code || !req.body.user_id) {
+        return res.status(400).json({ error: "Missing verification code or user ID" });
+    }
+
+    const sql = "SELECT * FROM email_verification WHERE user_id = ? AND code = ?";
+    connection.query(sql, [req.body.user_id, req.body.code], (error, results) => {
+        if (error) {
+            return res.status(500).json({ error: "Database error" });
+        }
+
+        if (results.length === 0) {
+            return res.status(400).json({ error: "Invalid or expired verification code" });
+        }
+
+        // ตรวจสอบว่ารหัสที่ส่งเข้ามาตรงกับรหัสที่เก็บในฐานข้อมูล
+        if (results[0].code == req.body.code) {
+            const deleteSql = "DELETE FROM email_verification WHERE verification_id = ?";
+            connection.query(deleteSql, [results[0].verification_id], (deleteError) => {
+                if (deleteError) {
+                    return res.status(500).json({ error: "Database delete error" });
+                }
+
+                return res.status(200).json({ message: "Email verified and data deleted successfully" });
+            });
+        } else {
+            return res.status(400).json({ error: "Invalid verification code" });
+        }
+    });
+});
+
+app.use(express.static("verify"));
+
+// app.post("/register", Postupload.single("user_image"), (req, res, next) => {
+//     // ตรวจสอบไฟล์
+//     if (!req.file) {
+//         console.error("No file uploaded");
+//         return res.json({ error: "No file uploaded" });
+//     }
+
+//     const user_image = req.file.filename;
+//     const checkEmailQuery = "SELECT * FROM users WHERE user_email = ?";
+//     connection.query(checkEmailQuery, [req.body.user_email], (err, results) => {
+//         if (err) {
+//             console.error(err);
+//             return res.json({ error: "error" });
+//         }
+
+//         if (results.length > 0) {
+//             // พบอีเมลที่ซ้ำกัน
+//             return res.json({ error: "Your email is already in use" });
+//         }
+//         bcrypt.hash(req.body.user_password, saltRounds, function (err, hash) {
+//             // แนบคอลัมน์ user_type ด้วยค่าเริ่มต้น "user"
+//             connection.execute(
+//                 "INSERT INTO users (user_email, user_name, user_password, user_image, user_type) VALUES (?, ?, ?, ?, ?)",
+//                 [req.body.user_email, req.body.user_name, hash, user_image, "user"],
+//                 function (err, results, fields) {
+//                     if (err) {
+//                         res.json({ status: "error", message: err });
+//                         return;
+//                     }
+//                     res.json({ status: "ok" });
+//                 }
+//             );
+//         });
+//     });
+// });
 
 //-----------------------------------------------------------------------------------------------
 // app.post('/login',jsonParser, Authlogin.login);
