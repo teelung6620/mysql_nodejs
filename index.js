@@ -604,6 +604,40 @@ app.post("/ingredients_data", (req, res) => {
     });
 });
 
+app.patch("/ingredients_data/:ingredients_id", (req, res) => {
+    const ingredientId = req.params.ingredients_id;
+    const { ingredients_name, ingredients_units, ingredients_unitsName, ingredients_cal } = req.body;
+
+    // 1. สร้างคำสั่ง SQL อัปเดตข้อมูล
+    const updateQuery =
+        "UPDATE ingredients_list SET ingredients_name = ?, ingredients_units = ?, ingredients_unitsName = ?, ingredients_cal = ? WHERE ingredients_id = ?";
+
+    connection.query(updateQuery, [ingredients_name, ingredients_units, ingredients_unitsName, ingredients_cal, ingredientId], (err, result) => {
+        if (err) {
+            console.error("Error updating ingredient:", err);
+            return res.status(500).json({ error: "Failed to update ingredient" });
+        }
+        console.log("Ingredient updated:", result);
+        return res.json({ status: "ok" });
+    });
+});
+
+app.delete("/DELingredients/:ingredients_id", (req, res) => {
+    const ingredients_id = req.params.ingredients_id;
+
+    const sql = "DELETE FROM ingredients_list WHERE ingredients_id=? ";
+
+    connection.query(sql, [ingredients_id], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else {
+            // ถ้ามีการลบรายการใด ๆ ในฐานข้อมูล
+            res.status(200).json({ message: "ok" });
+            //res.json({ status: "ok" });
+        }
+    });
+});
+
 app.get("/bookmarks", (req, res) => {
     const sql = "SELECT * FROM bookmarks";
 
