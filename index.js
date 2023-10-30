@@ -511,6 +511,56 @@ app.get("/post_data", (req, res) => {
     });
 });
 
+app.put("/BANpost/:post_id", (req, res) => {
+    const userId = req.params.post_id;
+
+    // ตรวจสอบว่าผู้ใช้ถูกแบนหรือไม่
+    const sqlCheckBanned = "SELECT banned FROM post_users WHERE post_id=?";
+    connection.query(sqlCheckBanned, [userId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else if (results.length === 0) {
+            res.status(404).json({ message: "ผู้ใช้ไม่พบ" });
+        } else if (results[0].banned) {
+            res.status(403).json({ message: "ผู้ใช้ถูกแบนแล้ว" });
+        } else {
+            const sql = "UPDATE post_users SET banned = 1 WHERE post_id=?";
+            connection.query(sql, [userId], (error, results) => {
+                if (error) {
+                    res.status(500).json({ error: "Internal Server Error" });
+                } else {
+                    res.status(200).json({ message: "แบนผู้ใช้สำเร็จ" });
+                }
+            });
+        }
+    });
+});
+
+app.put("/UNBANpost/:post_id", (req, res) => {
+    const userId = req.params.post_id;
+
+    // ตรวจสอบว่าผู้ใช้ถูกแบนหรือไม่
+    const sqlCheckBanned = "SELECT banned FROM post_users WHERE post_id=?";
+    connection.query(sqlCheckBanned, [userId], (error, results) => {
+        if (error) {
+            res.status(500).json({ error: "Internal Server Error" });
+        } else if (results.length === 0) {
+            res.status(404).json({ message: "ผู้ใช้ไม่พบ" });
+        } else if (!results[0].banned) {
+            res.status(403).json({ message: "ผู้ใช้ยังไม่ถูกแบน" });
+        } else {
+            const sql = "UPDATE post_users SET banned = 0 WHERE post_id=?";
+            connection.query(sql, [userId], (error, results) => {
+                if (error) {
+                    res.status(500).json({ error: "Internal Server Error" });
+                } else {
+                    res.status(200).json({ message: "ปลดแบนผู้ใช้สำเร็จ" });
+                }
+            });
+        }
+    });
+});
+
 app.get("/ingredients_data", (req, res) => {
     const sql = "SELECT * FROM ingredients_list";
 
