@@ -121,7 +121,7 @@ router.post("/", function (req, res, next) {
                             res.json({ status: "ok_admin", message: "Admin login success", token });
                         }
                     } else {
-                        res.json({ status: "error", message: "Login fail" });
+                        res.json({ status: "error", message: "Wrong Email or Password" });
                     }
                 });
             }
