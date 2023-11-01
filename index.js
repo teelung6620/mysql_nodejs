@@ -464,10 +464,9 @@ app.get("/post_data", (req, res) => {
         } else {
             const postDetails = [];
 
-            // วนลูปผลลัพธ์เพื่อคำนวณ totalcal แยกตามแต่ละ post_id
             results.forEach((result, i) => {
                 const ingredients = JSON.parse(result.ingredients_id);
-                let totalCal = 0; // สร้างตัวแปรเพื่อเก็บผลรวม "ingredients_cal"
+                let totalCal = 0;
 
                 const sql2 = connection.format(
                     `
@@ -485,7 +484,8 @@ app.get("/post_data", (req, res) => {
                         const result2Size = results2.length;
 
                         results2.forEach((item, index) => {
-                            const thisCal = (ingredients.unit[index] / item.ingredients_units) * item.ingredients_cal;
+                            const thisCal = Math.floor((ingredients.unit[index] / item.ingredients_units) * item.ingredients_cal);
+
                             item.ingredients_units = ingredients.unit[index];
                             item.ingredients_cal = thisCal;
                             totalCal += thisCal; // เพิ่ม "ingredients_cal" ในผลรวม
@@ -493,6 +493,7 @@ app.get("/post_data", (req, res) => {
                             results[i].ingredients_id.push(item);
 
                             if (index === result2Size - 1) {
+                                totalCal = Math.floor(totalCal);
                                 results[i].totalCal = totalCal; // เพิ่มผลรวม "ingredients_cal" ในข้อมูลของแต่ละ post_id
                                 results[i].average_score = result.average_score; // เพิ่มค่าเฉลี่ย
                                 results[i].num_of_scores = result.num_of_scores; // เพิ่มจำนวน score_num
